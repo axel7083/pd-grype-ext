@@ -27,6 +27,8 @@ import type {
 import type { AsyncInit } from '../utils/async-init';
 import type { Octokit } from '@octokit/rest';
 import { platform, arch } from 'node:process';
+import path, { join } from 'node:path';
+import fs from 'node:fs';
 
 interface Dependencies {
   cliApi: typeof cliApi;
@@ -72,20 +74,10 @@ export class SyftService implements Disposable, AsyncInit {
         throw new Error('Not implemented');
       },
       doInstall: async (logger: Logger) => {
-        if(!selected) throw new Error('No version selected');
+        if (!selected) throw new Error('No version selected');
 
-        const { data } = await this.dependencies.octokit.repos.listReleaseAssets({
-          owner: ANCHOR_GITHUB_ORG,
-          repo: GRYPE_GITHUB_REPOSITORY,
-          release_id: selected.id,
-        });
-
-        const assetName = this.getAssetName(selected.tag.slice(1));
-
-        const asset = data.find((asset) => assetName === asset.name);
-        if(!asset) throw new Error(`asset ${assetName} not found`);
-
-        console.log('Found asset', asset.id);
+        const asset = await this.download(selected);
+        console.log('downloaded asset', asset);
       },
       selectVersion: async (latest?: boolean) => {
         selected = await this.promptUserForVersion();
@@ -93,6 +85,36 @@ export class SyftService implements Disposable, AsyncInit {
       },
     });
   }
+
+  protected async download(release: SyftGithubReleaseArtifactMetadata): Promise<string> {
+    const { data } = await this.dependencies.octokit.repos.listReleaseAssets({
+      owner: ANCHOR_GITHUB_ORG,
+      repo: GRYPE_GITHUB_REPOSITORY,
+      release_id: release.id,
+    });
+
+    const assetName = this.getAssetName(release.tag.slice(1));
+
+    const asset = data.find(asset => assetName === asset.name);
+    if (!asset) throw new Error(`asset ${assetName} not found`);
+
+    const response = await this.dependencies.octokit.repos.getReleaseAsset({
+      owner: ANCHOR_GITHUB_ORG,
+      repo: GRYPE_GITHUB_REPOSITORY,
+      asset_id: asset.id,
+      headers: {
+        accept: 'application/octet-stream',
+      },
+    });
+
+    await fs.promises.mkdir(this.dependencies.storagePath, { recursive: true });
+
+    // write the file
+    const destination = join(this.dependencies.storagePath, asset.name);
+    await fs.promises.writeFile(destination, Buffer.from(response.data as unknown as ArrayBuffer));
+
+    return destination;
+  };
 
   protected getAssetName(version: string): string {
     let os: string;
@@ -163,7 +185,7 @@ export class SyftService implements Disposable, AsyncInit {
     // keep only releases and not pre-releases
     lastReleases.data = lastReleases.data.filter(release => !release.prerelease);
 
-    if(lastReleases.data.length > limits) {
+    if (lastReleases.data.length > limits) {
       lastReleases.data = lastReleases.data.slice(0, limits);
     }
 
