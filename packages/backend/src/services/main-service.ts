@@ -49,6 +49,8 @@ import { ImageService } from './image-service';
 import { ImageApiImpl } from '../apis/image-api-impl';
 import { ProviderService } from './provider-service';
 import { ProviderApiImpl } from '../apis/provider-api-impl';
+import { SyftService } from './syft-service';
+import { Octokit } from '@octokit/rest';
 
 interface Dependencies {
   extensionContext: ExtensionContext;
@@ -126,6 +128,17 @@ export class MainService implements Disposable, AsyncInit {
     });
     await images.init();
     this.#disposables.push(images);
+
+    // syft service (register CLI tool)
+    const syft = new SyftService({
+      cliApi: this.dependencies.cliApi,
+      octokit: new Octokit(),
+      window: this.dependencies.window,
+      envApi: this.dependencies.env,
+      storagePath: this.dependencies.extensionContext.storagePath,
+    });
+    await syft.init();
+    this.#disposables.push(syft);
 
     /**
      * Creating the api for the frontend IPCs
