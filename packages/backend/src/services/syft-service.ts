@@ -23,12 +23,16 @@ import type {
   QuickPickItem,
   env as envApi,
   window as windowApi,
+  process as processApi,
 } from '@podman-desktop/api';
 import type { AsyncInit } from '../utils/async-init';
 import type { Octokit } from '@octokit/rest';
 import { platform, arch } from 'node:process';
-import path, { join } from 'node:path';
-import fs from 'node:fs';
+import { join } from 'node:path';
+import AdmZip from 'adm-zip';
+import * as tar from 'tar';
+import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 interface Dependencies {
   cliApi: typeof cliApi;
@@ -36,6 +40,7 @@ interface Dependencies {
   storagePath: string;
   envApi: typeof envApi;
   window: typeof windowApi;
+  process: typeof processApi;
 }
 
 export interface SyftGithubReleaseArtifactMetadata extends QuickPickItem {
@@ -55,7 +60,20 @@ export class SyftService implements Disposable, AsyncInit {
     this.#cliTool?.dispose();
   }
 
+  protected async getSyftVersion(path: string): Promise<string> {
+    // output example 'syft 1.41.2'
+    const { stdout } = await this.dependencies.process.exec(path , ['--version']);
+    return stdout.trim().split(' ')[1];
+  }
+
   async init(): Promise<void> {
+    let version: string | undefined;
+
+    const internal = join(this.dependencies.storagePath, this.dependencies.envApi.isWindows ? 'syft.exe' : 'syft');
+    if (existsSync(internal)) {
+      version = await this.getSyftVersion(internal);
+    }
+
     // Register the Syft CLI tool. For now, only registration is performed without installers or updates.
     this.#cliTool = this.dependencies.cliApi.createCliTool({
       name: 'syft',
@@ -66,6 +84,9 @@ export class SyftService implements Disposable, AsyncInit {
         icon: 'icon.png',
         logo: 'icon.png',
       },
+      version,
+      installationSource: 'extension',
+      path: internal,
     });
 
     let selected: SyftGithubReleaseArtifactMetadata | undefined = undefined;
@@ -76,8 +97,21 @@ export class SyftService implements Disposable, AsyncInit {
       doInstall: async (logger: Logger) => {
         if (!selected) throw new Error('No version selected');
 
-        const asset = await this.download(selected);
-        console.log('downloaded asset', asset);
+        const assetPath = await this.download(selected);
+        logger.log(`Downloaded syft to ${assetPath}`);
+
+        try {
+          const binPath = await this.extract(assetPath, this.dependencies.storagePath);
+          logger.log(`Extracted syft to ${binPath}`);
+
+          this.#cliTool?.updateVersion({
+            version: selected.tag.slice(1),
+            path: binPath,
+            installationSource: 'extension',
+          });
+        } finally {
+          await rm(assetPath);
+        }
       },
       selectVersion: async (latest?: boolean) => {
         selected = await this.promptUserForVersion();
@@ -107,14 +141,37 @@ export class SyftService implements Disposable, AsyncInit {
       },
     });
 
-    await fs.promises.mkdir(this.dependencies.storagePath, { recursive: true });
+    await mkdir(this.dependencies.storagePath, { recursive: true });
 
     // write the file
     const destination = join(this.dependencies.storagePath, asset.name);
-    await fs.promises.writeFile(destination, Buffer.from(response.data as unknown as ArrayBuffer));
+    await writeFile(destination, Buffer.from(response.data as unknown as ArrayBuffer));
 
     return destination;
-  };
+  }
+
+  protected async extract(archivePath: string, destDir: string): Promise<string> {
+    if (archivePath.endsWith('.zip')) {
+      const zip = new AdmZip(archivePath);
+      // eslint-disable-next-line sonarjs/no-unsafe-unzip
+      zip.extractAllTo(destDir, true);
+    } else if (archivePath.endsWith('.tar.gz')) {
+      // eslint-disable-next-line sonarjs/no-unsafe-unzip
+      await tar.x({ file: archivePath, cwd: destDir });
+    } else {
+      throw new Error(`Unsupported archive format: ${archivePath}`);
+    }
+
+    const binaryName = platform === 'win32' ? 'syft.exe' : 'syft';
+    const binaryPath = join(destDir, binaryName);
+
+    if (platform !== 'win32') {
+      // eslint-disable-next-line sonarjs/file-permissions
+      await chmod(binaryPath, 0o755);
+    }
+
+    return binaryPath;
+  }
 
   protected getAssetName(version: string): string {
     let os: string;

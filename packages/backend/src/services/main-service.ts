@@ -51,6 +51,7 @@ import { ProviderService } from './provider-service';
 import { ProviderApiImpl } from '../apis/provider-api-impl';
 import { SyftService } from './syft-service';
 import { Octokit } from '@octokit/rest';
+import { CommandService } from './command-service';
 
 interface Dependencies {
   extensionContext: ExtensionContext;
@@ -136,9 +137,18 @@ export class MainService implements Disposable, AsyncInit {
       window: this.dependencies.window,
       envApi: this.dependencies.env,
       storagePath: this.dependencies.extensionContext.storagePath,
+      process: this.dependencies.processApi,
     });
     await syft.init();
     this.#disposables.push(syft);
+
+    // commands
+    const commands = new CommandService({
+      commandsApi: this.dependencies.commandsApi,
+      routing: routing,
+    });
+    await commands.init();
+    this.#disposables.push(commands);
 
     /**
      * Creating the api for the frontend IPCs

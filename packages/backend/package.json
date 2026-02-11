@@ -19,17 +19,36 @@
     "format:fix": "prettier --write \"src/**/*.ts\"",
     "watch": "vite --mode development build -w"
   },
-  "contributes": {},
+  "contributes": {
+    "menus": {
+      "dashboard/image": [
+        {
+          "command": "syft.analysis",
+          "title": "Analyse Image"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "syft.analysis",
+        "title": "Syft: analyse Image"
+      }
+    ]
+  },
   "devDependencies": {
     "@podman-desktop/extension-grype-core-api": "workspace:^",
     "@podman-desktop/api": "^1.25.1",
     "@types/node": "^24",
+    "@types/adm-zip": "^0.5.7",
+    "@types/tar": "^6.1.13",
     "vite": "^7.3.1",
     "vitest": "^4.0.16",
     "swagger-typescript-api": "^13.2.17"
   },
   "dependencies": {
     "zod": "^4.3.6",
-    "@octokit/rest": "^22.0.1"
+    "@octokit/rest": "^22.0.1",
+    "adm-zip": "^0.5.12",
+    "tar": "^7.4.3"
   }
 }
