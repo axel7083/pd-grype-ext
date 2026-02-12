@@ -127,7 +127,6 @@ export class MainService implements Disposable, AsyncInit {
       containers: this.dependencies.containers,
       providers: providers,
       navigation: this.dependencies.navigationApi,
-      webview: webview.getPanel().webview,
       telemetry: this.#telemetry,
     });
     await images.init();

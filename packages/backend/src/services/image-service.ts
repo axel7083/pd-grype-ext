@@ -21,74 +21,27 @@ import type {
   window,
   ProviderContainerConnection,
   navigation,
-  Webview,
   TelemetryLogger,
 } from '@podman-desktop/api';
-import { ProgressLocation } from '@podman-desktop/api';
 import type {
   ProviderContainerConnectionIdentifierInfo,
   SimpleImageInfo,
 } from '@podman-desktop/extension-grype-core-api';
-import { Messages } from '@podman-desktop/extension-grype-core-api';
 import type { ProviderService } from './provider-service';
-import { Publisher } from '../utils/publisher';
 import type { AsyncInit } from '../utils/async-init';
-import { TelemetryEvents } from '../utils/telemetry-events';
 
 interface Dependencies {
   containers: typeof containerEngine;
   windowApi: typeof window;
   providers: ProviderService;
   navigation: typeof navigation;
-  webview: Webview;
   telemetry: TelemetryLogger;
 }
 
-export class ImageService extends Publisher<void> implements AsyncInit, Disposable {
+export class ImageService implements AsyncInit, Disposable {
   #disposables: Disposable[] = [];
 
-  constructor(protected readonly dependencies: Dependencies) {
-    super(dependencies.webview, Messages.UPDATE_IMAGES, () => {});
-  }
-
-  public async pull(options: { image: string; connection: ProviderContainerConnection }): Promise<SimpleImageInfo> {
-    const telemetry: Record<string, unknown> = {
-      image: options.image,
-    };
-
-    return await this.dependencies.windowApi
-      .withProgress(
-        {
-          location: ProgressLocation.TASK_WIDGET,
-          title: `Pulling ${options.image}`,
-          cancellable: true,
-        },
-        async (_, token) => {
-          token.onCancellationRequested(() => (telemetry['cancelled'] = true));
-
-          await this.dependencies.containers.pullImage(
-            options.connection.connection,
-            options.image,
-            console.log,
-            undefined,
-            token,
-          );
-          const images = await this.dependencies.containers.listImages({
-            provider: options.connection.connection,
-          });
-          const image = images.find(image => image.RepoTags?.find(tag => tag === options.image));
-          if (!image) throw new Error(`Cannot find image ${options.image}`);
-          return {
-            name: options.image,
-            connection: this.dependencies.providers.toProviderContainerConnectionDetailedInfo(options.connection),
-            id: image.Id,
-          };
-        },
-      )
-      .finally(() => {
-        this.dependencies.telemetry.logUsage(TelemetryEvents.PULL_IMAGE, telemetry);
-      });
-  }
+  constructor(protected readonly dependencies: Dependencies) {}
 
   public async all(options: {
     registry: string;
@@ -117,20 +70,35 @@ export class ImageService extends Publisher<void> implements AsyncInit, Disposab
     }, [] as Array<SimpleImageInfo>);
   }
 
-  public async navigateToImageDetails(image: SimpleImageInfo): Promise<void> {
-    const connection = this.dependencies.providers.getProviderContainerConnection(image.connection);
+  public async inspect(options: {
+    imageId: string;
+    connection: ProviderContainerConnection;
+  }): Promise<SimpleImageInfo> {
+    const engineId = await this.getEngineId(options.connection);
+    const image = await this.dependencies.containers.getImageInspect(engineId, options.imageId);
+    return {
+      id: image.Id,
+      name: image.RepoTags?.[0] ?? '<none>',
+      connection: this.dependencies.providers.toProviderContainerConnectionDetailedInfo(options.connection),
+    };
+  }
 
+  protected async getEngineId(connection: ProviderContainerConnection): Promise<string> {
     const info = await this.dependencies.containers.listInfos({
       provider: connection.connection,
     });
     if (info.length !== 1) throw new Error('Unexpected number of connections');
-    const engineId = info[0].engineId;
+    return info[0].engineId;
+  }
+
+  public async navigateToImageDetails(image: SimpleImageInfo): Promise<void> {
+    const connection = this.dependencies.providers.getProviderContainerConnection(image.connection);
+    const engineId = await this.getEngineId(connection);
 
     return this.dependencies.navigation.navigateToImage(image.id, engineId, image.name);
   }
 
-  override dispose(): void {
-    super.dispose();
+  dispose(): void {
     this.#disposables.forEach((disposable: Disposable) => disposable.dispose());
   }
 

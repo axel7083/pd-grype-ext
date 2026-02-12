@@ -33,17 +33,6 @@ export class ImageApiImpl extends ImageApi {
     super();
   }
 
-  override pull(options: {
-    image: string;
-    connection: ProviderContainerConnectionIdentifierInfo;
-  }): Promise<SimpleImageInfo> {
-    const connection = this.dependencies.providers.getProviderContainerConnection(options.connection);
-    return this.dependencies.images.pull({
-      image: options.image,
-      connection,
-    });
-  }
-
   override all(options: {
     registry: string;
     organisation: string;
@@ -53,6 +42,17 @@ export class ImageApiImpl extends ImageApi {
     return this.dependencies.images.all({
       registry: options.registry,
       organisation: options.organisation,
+      connection,
+    });
+  }
+
+  override inspect(options: {
+    imageId: string;
+    connection: ProviderContainerConnectionIdentifierInfo;
+  }): Promise<SimpleImageInfo> {
+    const connection = this.dependencies.providers.getProviderContainerConnection(options.connection);
+    return this.dependencies.images.inspect({
+      imageId: options.imageId,
       connection,
     });
   }

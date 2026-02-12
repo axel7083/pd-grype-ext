@@ -17,20 +17,32 @@
  ***********************************************************************/
 import type { PageLoad } from './$types';
 import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
-import { syftAPI } from '/@/api/client';
+import { imageAPI, syftAPI } from '/@/api/client';
+import type {
+  ProviderContainerConnectionIdentifierInfo,
+  SimpleImageInfo,
+} from '@podman-desktop/extension-grype-core-api';
 
 interface Data {
   analysis: Promise<Document>;
+  image: Promise<SimpleImageInfo>;
 }
 
 export const load: PageLoad = async ({ params }): Promise<Data> => {
+  const connection: ProviderContainerConnectionIdentifierInfo = {
+    name: decodeURIComponent(params.connection),
+    providerId: decodeURIComponent(params.providerId),
+  };
+  const imageId = decodeURIComponent(params.imageId);
+
   return {
+    image: imageAPI.inspect({
+      connection,
+      imageId,
+    }),
     analysis: syftAPI.analyse({
-      connection: {
-        name: decodeURIComponent(params.connection),
-        providerId: decodeURIComponent(params.providerId),
-      },
-      imageId: decodeURIComponent(params.imageId),
+      connection,
+      imageId,
     }),
   };
 };

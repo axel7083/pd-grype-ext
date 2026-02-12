@@ -16,7 +16,6 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 import { getChannel } from './utils';
-import { ImageApi } from '../apis/image-api';
 import { SyftApi } from '../apis/syft-api';
 
-export const noTimeoutChannels: string[] = [getChannel(ImageApi, 'pull'), getChannel(SyftApi, 'analyse')];
+export const noTimeoutChannels: string[] = [getChannel(SyftApi, 'analyse')];

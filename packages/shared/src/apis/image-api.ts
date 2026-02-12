@@ -21,11 +21,6 @@ import type { SimpleImageInfo } from '../models/simple-image-info';
 export abstract class ImageApi {
   static readonly CHANNEL: string = 'image-api';
 
-  abstract pull(options: {
-    image: string;
-    connection?: ProviderContainerConnectionIdentifierInfo;
-  }): Promise<SimpleImageInfo>;
-
   abstract all(options: {
     registry: string;
     connection?: ProviderContainerConnectionIdentifierInfo;
@@ -35,4 +30,9 @@ export abstract class ImageApi {
    * Open the image details page for the given image.
    */
   abstract navigateToImageDetails(image: SimpleImageInfo): Promise<void>;
+
+  public abstract inspect(options: {
+    imageId: string;
+    connection: ProviderContainerConnectionIdentifierInfo;
+  }): Promise<SimpleImageInfo>;
 }
