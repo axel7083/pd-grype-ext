@@ -21,6 +21,7 @@ import {
   ImageApi,
   ProviderApi,
   RpcBrowser,
+  SyftApi,
 } from '@podman-desktop/extension-grype-core-api';
 
 /**
@@ -39,6 +40,7 @@ export const routingAPI: RoutingApi = rpcBrowser.getProxy(RoutingApi);
 export const providerAPI: ProviderApi = rpcBrowser.getProxy(ProviderApi);
 export const imageAPI: ImageApi = rpcBrowser.getProxy(ImageApi);
 export const dialogAPI: DialogApi = rpcBrowser.getProxy(DialogApi);
+export const syftAPI: SyftApi = rpcBrowser.getProxy(SyftApi);
 
 // The below code is used to save the state of the router in the podmanDesktopApi, so
 // that we can determine the correct route to display when the extension is reloaded.

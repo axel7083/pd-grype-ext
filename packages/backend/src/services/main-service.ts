@@ -37,6 +37,7 @@ import {
   DialogApi,
   ImageApi,
   ProviderApi,
+  SyftApi,
 } from '@podman-desktop/extension-grype-core-api';
 
 import type { AsyncInit } from '../utils/async-init';
@@ -52,6 +53,8 @@ import { ProviderApiImpl } from '../apis/provider-api-impl';
 import { SyftService } from './syft-service';
 import { Octokit } from '@octokit/rest';
 import { CommandService } from './command-service';
+import { ContainerService } from './containers-service';
+import { SyftApiImpl } from '../apis/syft-api-impl';
 
 interface Dependencies {
   extensionContext: ExtensionContext;
@@ -142,10 +145,19 @@ export class MainService implements Disposable, AsyncInit {
     await syft.init();
     this.#disposables.push(syft);
 
+    // containers
+    const containers = new ContainerService({
+      containers: this.dependencies.containers,
+      providers: providers,
+    });
+    this.#disposables.push(containers);
+
     // commands
     const commands = new CommandService({
       commandsApi: this.dependencies.commandsApi,
       routing: routing,
+      providers: providers,
+      containers: containers,
     });
     await commands.init();
     this.#disposables.push(commands);
@@ -178,5 +190,12 @@ export class MainService implements Disposable, AsyncInit {
       providers,
     });
     rpcExtension.registerInstance<ImageApi>(ImageApi, imageApiImpl);
+
+    // image api
+    const syftApiImpl = new SyftApiImpl({
+      syft: syft,
+      provider: providers,
+    });
+    rpcExtension.registerInstance<SyftApi>(SyftApi, syftApiImpl);
   }
 }

@@ -19,6 +19,7 @@ import { join } from 'node:path';
 
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
+import { syftJSONSchema } from './vite-plugins/syft-json-schema';
 
 const PACKAGE_ROOT = __dirname;
 
@@ -33,9 +34,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '/@/': join(PACKAGE_ROOT, 'src') + '/',
+      '/@generated/': join(PACKAGE_ROOT, 'generated') + '/',
     },
   },
-  plugins: [dts()],
+  plugins: [syftJSONSchema(), dts()],
   build: {
     sourcemap: 'inline',
     target: 'esnext',

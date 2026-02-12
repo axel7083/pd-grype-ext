@@ -6,6 +6,15 @@
   "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.cjs"
+    },
+    "./json-schema/syft": {
+      "types": "./generated/syft-schema.d.ts"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -20,10 +29,12 @@
     "vite": "^7.3.1",
     "vite-plugin-dts": "^4.3.0",
     "vitest": "^4.0.16",
-    "@podman-desktop/api": "^1.24.2"
+    "@podman-desktop/api": "^1.24.2",
+    "json-schema-to-typescript": "^15.0.4"
   },
   "files": [
     "dist",
-    "!dist/**/*.spec.*"
+    "!dist/**/*.spec.*",
+    "generated"
   ]
 }

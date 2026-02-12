@@ -17,5 +17,6 @@
  ***********************************************************************/
 import { getChannel } from './utils';
 import { ImageApi } from '../apis/image-api';
+import { SyftApi } from '../apis/syft-api';
 
-export const noTimeoutChannels: string[] = [getChannel(ImageApi, 'pull')];
+export const noTimeoutChannels: string[] = [getChannel(ImageApi, 'pull'), getChannel(SyftApi, 'analyse')];

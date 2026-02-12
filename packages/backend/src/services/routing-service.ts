@@ -18,6 +18,7 @@
 import type { AsyncInit } from '../utils/async-init';
 import type { Disposable, WebviewPanel } from '@podman-desktop/api';
 import { Publisher } from '../utils/publisher';
+import type { ProviderContainerConnectionIdentifierInfo } from '@podman-desktop/extension-grype-core-api';
 import { Messages } from '@podman-desktop/extension-grype-core-api';
 
 interface Dependencies {
@@ -50,6 +51,13 @@ export class RoutingService extends Publisher<string | undefined> implements Dis
     this.notify();
     // reveal
     this.dependencies.panel.reveal();
+  }
+
+  async openImageAnalysisPage(
+    provider: ProviderContainerConnectionIdentifierInfo,
+    imageId: string,
+  ): Promise<void> {
+    return this.write(`/images/${encodeURIComponent(provider.providerId)}/${encodeURIComponent(provider.name)}/${encodeURIComponent(imageId)}`);
   }
 
   override dispose(): void {

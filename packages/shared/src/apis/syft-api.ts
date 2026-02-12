@@ -15,23 +15,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
+import type { ProviderContainerConnectionDetailedInfo } from '../models/provider-container-connection-detailed-info';
 
-// constants
-export * from './messages';
+export abstract class SyftApi {
+  static readonly CHANNEL: string = 'syft-api';
 
-// apis
-export * from './apis/routing-api';
-export * from './apis/dialog-api';
-export * from './apis/image-api';
-export * from './apis/provider-api';
-export * from './apis/syft-api';
-
-// proxy utils
-export * from './messages/message-proxy';
-
-// models
-export * from './models/input-box-options';
-export * from './models/provider-container-connection-identifier-info';
-export * from './models/provider-container-connection-detailed-info';
-export * from './models/simple-image-info';
-
+  abstract analyse(options: { connection: ProviderContainerConnectionDetailedInfo; imageId: string }): Promise<string>;
+}

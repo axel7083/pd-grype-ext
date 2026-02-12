@@ -10,9 +10,6 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "paths": {
-      "/@generated/*": ["./generated/*"]
-    },
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true

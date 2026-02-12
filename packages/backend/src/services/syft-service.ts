@@ -16,23 +16,27 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 import type {
-  Disposable,
   cli as cliApi,
   CliTool,
-  Logger,
-  QuickPickItem,
+  Disposable,
   env as envApi,
-  window as windowApi,
+  Logger,
   process as processApi,
+  ProviderContainerConnection,
+  QuickPickItem,
+  window as windowApi} from '@podman-desktop/api';
+import {
+  ProgressLocation,
 } from '@podman-desktop/api';
 import type { AsyncInit } from '../utils/async-init';
 import type { Octokit } from '@octokit/rest';
-import { platform, arch } from 'node:process';
-import { join } from 'node:path';
+import { arch, platform } from 'node:process';
+import { dirname, join } from 'node:path';
 import AdmZip from 'adm-zip';
 import * as tar from 'tar';
-import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
 
 interface Dependencies {
   cliApi: typeof cliApi;
@@ -53,8 +57,11 @@ export const GRYPE_GITHUB_REPOSITORY = 'syft';
 
 export class SyftService implements Disposable, AsyncInit {
   #cliTool?: CliTool;
+  #internalPath: string;
 
-  constructor(protected dependencies: Dependencies) {}
+  constructor(protected dependencies: Dependencies) {
+    this.#internalPath = join(this.dependencies.storagePath, this.dependencies.envApi.isWindows ? 'syft.exe' : 'syft');
+  }
 
   dispose(): void {
     this.#cliTool?.dispose();
@@ -62,16 +69,60 @@ export class SyftService implements Disposable, AsyncInit {
 
   protected async getSyftVersion(path: string): Promise<string> {
     // output example 'syft 1.41.2'
-    const { stdout } = await this.dependencies.process.exec(path , ['--version']);
+    const { stdout } = await this.dependencies.process.exec(path, ['--version']);
     return stdout.trim().split(' ')[1];
+  }
+
+  public async analyse(options: { connection: ProviderContainerConnection; imageId: string }): Promise<Document> {
+    if (!this.#cliTool?.version || !this.#cliTool.path)
+      throw new Error('cannot analyse image without syft binary installed');
+
+    const binary = this.#cliTool.path;
+
+    // TODO: support podman connections
+    if (
+      options.connection.connection.type !== 'podman' ||
+      !this.dependencies.envApi.isLinux ||
+      !!options.connection.connection.vmType
+    ) {
+      throw new Error('extension only supported linux native podman connection');
+    }
+
+    const destination = join(
+      this.dependencies.storagePath,
+      options.connection.providerId,
+      options.connection.connection.name,
+      `${options.imageId}.jsonpow`,
+    );
+
+    // shortcut everything if we have already done the scanning
+    if (existsSync(destination)) {
+      return destination;
+    }
+
+    await mkdir(dirname(destination), { recursive: true });
+
+    return await this.dependencies.window.withProgress(
+      {
+        location: ProgressLocation.TASK_WIDGET,
+        title: `Scanning ${options.imageId}`,
+      },
+      async () => {
+        const tmp = `${destination}.tmp`;
+
+        await this.dependencies.process.exec(binary, ['--from=podman', options.imageId, `--output=json=${tmp}`]);
+        await rename(tmp, destination);
+
+        return await readFile(destination, 'utf8');
+      },
+    );
   }
 
   async init(): Promise<void> {
     let version: string | undefined;
 
-    const internal = join(this.dependencies.storagePath, this.dependencies.envApi.isWindows ? 'syft.exe' : 'syft');
-    if (existsSync(internal)) {
-      version = await this.getSyftVersion(internal);
+    if (existsSync(this.#internalPath)) {
+      version = await this.getSyftVersion(this.#internalPath);
     }
 
     // Register the Syft CLI tool. For now, only registration is performed without installers or updates.
@@ -86,7 +137,7 @@ export class SyftService implements Disposable, AsyncInit {
       },
       version,
       installationSource: 'extension',
-      path: internal,
+      path: version ? this.#internalPath : undefined,
     });
 
     let selected: SyftGithubReleaseArtifactMetadata | undefined = undefined;

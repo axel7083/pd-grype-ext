@@ -27,7 +27,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '/@/': join(PACKAGE_ROOT, 'src') + '/',
-      '/@generated/': join(PACKAGE_ROOT, 'generated') + '/',
     },
   },
   build: {
@@ -41,7 +40,7 @@ export default defineConfig({
       formats: ['cjs'],
     },
     rollupOptions: {
-      external: ['ssh2', '@podman-desktop/api', ...builtinModules.flatMap(p => [p, `node:${p}`])],
+      external: ['@podman-desktop/api', ...builtinModules.flatMap(p => [p, `node:${p}`])],
       output: {
         entryFileNames: '[name].cjs',
       },
