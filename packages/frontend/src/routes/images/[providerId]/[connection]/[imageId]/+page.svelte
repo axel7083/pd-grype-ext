@@ -7,6 +7,13 @@
 </script>
 
 <DetailsPage title="Image analysis">
+  {#snippet subtitleSnippet()}
+    {#await data.image}
+      <div class="h-2 size-40 rounded bg-gray-900 animate-pulse"></div>
+    {:then image}
+      <span>{image.name}</span>
+    {/await}
+  {/snippet}
   {#snippet contentSnippet()}
     <div class="w-full h-full">
       {#await data.analysis}
