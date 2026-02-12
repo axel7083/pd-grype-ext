@@ -15,10 +15,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
-import type { ProviderContainerConnectionDetailedInfo } from '../models/provider-container-connection-detailed-info';
+import type { ProviderContainerConnectionIdentifierInfo } from '../models/provider-container-connection-identifier-info';
+
+import type { Document } from '/@generated/syft-schema';
 
 export abstract class SyftApi {
   static readonly CHANNEL: string = 'syft-api';
 
-  abstract analyse(options: { connection: ProviderContainerConnectionDetailedInfo; imageId: string }): Promise<string>;
+  abstract analyse(options: {
+    connection: ProviderContainerConnectionIdentifierInfo;
+    imageId: string;
+  }): Promise<Document>;
 }

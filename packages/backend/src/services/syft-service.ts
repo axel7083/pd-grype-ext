@@ -97,7 +97,8 @@ export class SyftService implements Disposable, AsyncInit {
 
     // shortcut everything if we have already done the scanning
     if (existsSync(destination)) {
-      return destination;
+      const content = await readFile(destination, 'utf8');
+      return JSON.parse(content) as Document;
     }
 
     await mkdir(dirname(destination), { recursive: true });
@@ -113,7 +114,8 @@ export class SyftService implements Disposable, AsyncInit {
         await this.dependencies.process.exec(binary, ['--from=podman', options.imageId, `--output=json=${tmp}`]);
         await rename(tmp, destination);
 
-        return await readFile(destination, 'utf8');
+        const content = await readFile(destination, 'utf8');
+        return JSON.parse(content) as Document;
       },
     );
   }

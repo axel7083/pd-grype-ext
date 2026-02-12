@@ -40,7 +40,7 @@ export class WebviewService implements Disposable, AsyncInit {
 
   async init(): Promise<void> {
     // register webview
-    const panel = this.dependencies.window.createWebviewPanel('hummingbird', 'Hummingbird', this.getWebviewOptions());
+    const panel = this.dependencies.window.createWebviewPanel('grype', 'Grype', this.getWebviewOptions());
 
     // update html
     const indexHtmlUri = Uri.joinPath(this.#mediaPath, 'index.html');

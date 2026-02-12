@@ -16,21 +16,21 @@
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
 import type { PageLoad } from './$types';
-import type {
-  ProviderContainerConnectionIdentifierInfo,
-} from '@podman-desktop/extension-grype-core-api';
+import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
+import { syftAPI } from '/@/api/client';
 
 interface Data {
-  connection: ProviderContainerConnectionIdentifierInfo;
-  imageId: string;
+  analysis: Promise<Document>;
 }
 
 export const load: PageLoad = async ({ params }): Promise<Data> => {
   return {
-    connection: {
-      name: decodeURIComponent(params.connection),
-      providerId: decodeURIComponent(params.providerId),
-    },
-    imageId: decodeURIComponent(params.imageId),
+    analysis: syftAPI.analyse({
+      connection: {
+        name: decodeURIComponent(params.connection),
+        providerId: decodeURIComponent(params.providerId),
+      },
+      imageId: decodeURIComponent(params.imageId),
+    }),
   };
 };

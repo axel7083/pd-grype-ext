@@ -15,7 +15,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
-import type { ProviderContainerConnectionDetailedInfo} from '@podman-desktop/extension-grype-core-api';
+import type { ProviderContainerConnectionIdentifierInfo } from '@podman-desktop/extension-grype-core-api';
+import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
 import { SyftApi } from '@podman-desktop/extension-grype-core-api';
 import type { SyftService } from '../services/syft-service';
 import type { ProviderService } from '../services/provider-service';
@@ -30,7 +31,10 @@ export class SyftApiImpl extends SyftApi {
     super();
   }
 
-  override analyse(options: { connection: ProviderContainerConnectionDetailedInfo; imageId: string }): Promise<string> {
+  override analyse(options: {
+    connection: ProviderContainerConnectionIdentifierInfo;
+    imageId: string;
+  }): Promise<Document> {
     const connection = this.dependencies.provider.getProviderContainerConnection(options.connection);
     return this.dependencies.syft.analyse({
       connection: connection,
