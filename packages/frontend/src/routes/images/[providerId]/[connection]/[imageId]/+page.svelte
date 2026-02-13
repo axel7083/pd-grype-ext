@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { LinearProgress, NavPage, Tab } from '@podman-desktop/ui-svelte';
-  import type { PageProps } from './$types';
-  import PackageList from '$lib/packages/PackageList.svelte';
-  import { page } from '$app/state';
+import { LinearProgress, NavPage, Tab } from '@podman-desktop/ui-svelte';
+import type { PageProps } from './$types';
+import PackageList from '$lib/packages/PackageList.svelte';
+import { page } from '$app/state';
 
-  let { data }: PageProps = $props();
+let { data }: PageProps = $props();
 
-  let searchTerm = $state('');
+let searchTerm = $state('');
 </script>
 
 <NavPage title="Image analysis" bind:searchTerm={searchTerm} searchEnabled={true}>
@@ -18,7 +18,7 @@
     {/await}
   {/snippet}
   {#snippet tabs()}
-    <Tab title="Packages" url={page.url.pathname} selected={true}/>
+    <Tab title="Packages" url={page.url.pathname} selected={true} />
   {/snippet}
   {#snippet content()}
     <div class="w-full h-full flex">
@@ -32,5 +32,3 @@
     </div>
   {/snippet}
 </NavPage>
-
-

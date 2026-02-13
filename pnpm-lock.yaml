@@ -121,6 +121,9 @@ importers:
       '@podman-desktop/extension-grype-core-api':
         specifier: workspace:^
         version: link:../shared
+      '@podman-desktop/podman-extension-api':
+        specifier: ^1.25.1
+        version: 1.25.1
       '@types/adm-zip':
         specifier: ^0.5.7
         version: 0.5.7
@@ -832,6 +835,9 @@ packages:
 
   '@podman-desktop/api@1.25.1':
     resolution: {integrity: sha512-OTsf2q0g5GavfalYFpOtyn8QVVkLKKJOH1zMabqcIK7yTpu093FRCQY/hBdUYx25UyEXhtX4v7QAP0+lc9B+jw==}
+
+  '@podman-desktop/podman-extension-api@1.25.1':
+    resolution: {integrity: sha512-jC7V3HkvYVNZmFfywdQYikDapnjpcIGm9m15QkFFrpvqn8PeMybyyMs0bVJeP2/MA//m56NT+WDWY5objm26Qw==}
 
   '@podman-desktop/ui-svelte@1.25.1':
     resolution: {integrity: sha512-O+0evQu+DtQSDi/pksyRxxj/Iv4OCtcyDa4pQqvOzhL5H73IQdwLCOjZ2KFA1xMVqMzCFvGMDHbGRSP9WyFaMg==}
@@ -4304,6 +4310,10 @@ snapshots:
       typescript: 5.9.3
 
   '@podman-desktop/api@1.25.1': {}
+
+  '@podman-desktop/podman-extension-api@1.25.1':
+    dependencies:
+      '@podman-desktop/api': 1.25.1
 
   '@podman-desktop/ui-svelte@1.25.1(svelte-fa@4.0.4(svelte@5.50.1))(svelte@5.50.1)':
     dependencies:

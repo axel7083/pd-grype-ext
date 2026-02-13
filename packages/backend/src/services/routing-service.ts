@@ -53,11 +53,10 @@ export class RoutingService extends Publisher<string | undefined> implements Dis
     this.dependencies.panel.reveal();
   }
 
-  async openImageAnalysisPage(
-    provider: ProviderContainerConnectionIdentifierInfo,
-    imageId: string,
-  ): Promise<void> {
-    return this.write(`/images/${encodeURIComponent(provider.providerId)}/${encodeURIComponent(provider.name)}/${encodeURIComponent(imageId)}`);
+  async openImageAnalysisPage(provider: ProviderContainerConnectionIdentifierInfo, imageId: string): Promise<void> {
+    return this.write(
+      `/images/${encodeURIComponent(provider.providerId)}/${encodeURIComponent(provider.name)}/${encodeURIComponent(imageId)}`,
+    );
   }
 
   override dispose(): void {

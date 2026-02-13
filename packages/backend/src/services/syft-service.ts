@@ -24,10 +24,9 @@ import type {
   process as processApi,
   ProviderContainerConnection,
   QuickPickItem,
-  window as windowApi} from '@podman-desktop/api';
-import {
-  ProgressLocation,
+  window as windowApi,
 } from '@podman-desktop/api';
+import { ProgressLocation } from '@podman-desktop/api';
 import type { AsyncInit } from '../utils/async-init';
 import type { Octokit } from '@octokit/rest';
 import { arch, platform } from 'node:process';
@@ -37,6 +36,7 @@ import * as tar from 'tar';
 import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
+import type { PodmanService } from './podman-service';
 
 interface Dependencies {
   cliApi: typeof cliApi;
@@ -45,6 +45,7 @@ interface Dependencies {
   envApi: typeof envApi;
   window: typeof windowApi;
   process: typeof processApi;
+  podman: PodmanService;
 }
 
 export interface SyftGithubReleaseArtifactMetadata extends QuickPickItem {
@@ -73,26 +74,30 @@ export class SyftService implements Disposable, AsyncInit {
     return stdout.trim().split(' ')[1];
   }
 
+  protected sanitizeImageId(imageId: string): string {
+    if (imageId.startsWith('sha256:')) {
+      return imageId.substring(7);
+    }
+    return imageId;
+  }
+
   public async analyse(options: { connection: ProviderContainerConnection; imageId: string }): Promise<Document> {
     if (!this.#cliTool?.version || !this.#cliTool.path)
       throw new Error('cannot analyse image without syft binary installed');
 
     const binary = this.#cliTool.path;
 
-    // TODO: support podman connections
-    if (
-      options.connection.connection.type !== 'podman' ||
-      !this.dependencies.envApi.isLinux ||
-      !!options.connection.connection.vmType
-    ) {
-      throw new Error('extension only supported linux native podman connection');
+    if (options.connection.connection.type !== 'podman') {
+      throw new Error('extension only supported podman connection');
     }
+
+    const imageId = this.sanitizeImageId(options.imageId);
 
     const destination = join(
       this.dependencies.storagePath,
       options.connection.providerId,
       options.connection.connection.name,
-      `${options.imageId}.jsonpow`,
+      `${imageId}.jsonpow`,
     );
 
     // shortcut everything if we have already done the scanning
@@ -101,17 +106,40 @@ export class SyftService implements Disposable, AsyncInit {
       return JSON.parse(content) as Document;
     }
 
-    await mkdir(dirname(destination), { recursive: true });
-
     return await this.dependencies.window.withProgress(
       {
         location: ProgressLocation.TASK_WIDGET,
-        title: `Scanning ${options.imageId}`,
+        title: `Scanning ${imageId}`,
       },
       async () => {
+        // list podman connections
+        const connection = await this.dependencies.podman.findPodmanConnection(options.connection);
+        if (!connection && !this.dependencies.envApi.isLinux) {
+          throw new Error('podman connection not found');
+        }
+
+        const env: Record<string, string> = {};
+        if (connection) {
+          // only support SSH
+          if (!connection.URI.startsWith('ssh:')) {
+            throw new Error('do not support non-SSH connections');
+          }
+
+          env['CONTAINER_HOST'] = connection.URI;
+          if (connection.Identity) {
+            env['CONTAINER_SSHKEY'] = connection.Identity;
+          }
+        }
+
+        await mkdir(dirname(destination), { recursive: true });
+
         const tmp = `${destination}.tmp`;
 
-        await this.dependencies.process.exec(binary, ['--from=podman', options.imageId, `--output=json=${tmp}`]);
+        console.log('env', env);
+        console.log('imageId', imageId);
+        await this.dependencies.process.exec(binary, ['--from=podman', options.imageId, `--output=json=${tmp}`], {
+          env,
+        });
         await rename(tmp, destination);
 
         const content = await readFile(destination, 'utf8');

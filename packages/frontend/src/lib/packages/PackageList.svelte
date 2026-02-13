@@ -6,14 +6,16 @@ import PackageColumnType from './PackageColumnType.svelte';
 import PackageColumnLicenses from './PackageColumnLicenses.svelte';
 
 interface Props {
-  packages: Package[]
+  packages: Package[];
   searchTerm: string;
 }
 
 let { packages, searchTerm }: Props = $props();
 
 let filtered = $derived(
-  searchTerm.length > 1 ? packages.filter((pack) => pack.name.toLowerCase().includes(searchTerm.toLowerCase())) : packages,
+  searchTerm.length > 1
+    ? packages.filter(pack => pack.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : packages,
 );
 
 const columns = [
@@ -43,10 +45,4 @@ const key = (pkg: Package): string => pkg.id;
 const label = (pkg: Package): string => pkg.name;
 </script>
 
-<Table
-  kind="package"
-  data={filtered}
-  columns={columns}
-  row={row}
-  {key}
-  {label} />
+<Table kind="package" data={filtered} columns={columns} row={row} key={key} label={label} />

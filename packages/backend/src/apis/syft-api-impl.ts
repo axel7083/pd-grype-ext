@@ -31,14 +31,20 @@ export class SyftApiImpl extends SyftApi {
     super();
   }
 
-  override analyse(options: {
+  override async analyse(options: {
     connection: ProviderContainerConnectionIdentifierInfo;
     imageId: string;
   }): Promise<Document> {
     const connection = this.dependencies.provider.getProviderContainerConnection(options.connection);
-    return this.dependencies.syft.analyse({
-      connection: connection,
-      imageId: options.imageId,
-    });
+
+    try {
+      return await this.dependencies.syft.analyse({
+        connection: connection,
+        imageId: options.imageId,
+      });
+    } catch (err: unknown) {
+      console.error(err);
+      throw err;
+    }
   }
 }

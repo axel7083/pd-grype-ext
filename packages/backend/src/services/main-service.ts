@@ -55,6 +55,7 @@ import { Octokit } from '@octokit/rest';
 import { CommandService } from './command-service';
 import { ContainerService } from './containers-service';
 import { SyftApiImpl } from '../apis/syft-api-impl';
+import { PodmanService } from './podman-service';
 
 interface Dependencies {
   extensionContext: ExtensionContext;
@@ -114,6 +115,12 @@ export class MainService implements Disposable, AsyncInit {
       telemetry: this.#telemetry,
     });
 
+    // podman service
+    const podman = new PodmanService({
+      extensions: this.dependencies.extensions,
+    });
+    this.#disposables.push(podman);
+
     // The provider service register subscribers events for provider updates
     const providers = new ProviderService({
       providers: this.dependencies.providers,
@@ -140,6 +147,7 @@ export class MainService implements Disposable, AsyncInit {
       envApi: this.dependencies.env,
       storagePath: this.dependencies.extensionContext.storagePath,
       process: this.dependencies.processApi,
+      podman: podman,
     });
     await syft.init();
     this.#disposables.push(syft);

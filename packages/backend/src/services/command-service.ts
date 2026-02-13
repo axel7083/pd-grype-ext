@@ -42,7 +42,7 @@ export class CommandService implements Disposable, AsyncInit {
   constructor(private dependencies: Dependencies) {}
 
   dispose(): void {
-    this.#disposables.forEach((disposable) => disposable.dispose());
+    this.#disposables.forEach(disposable => disposable.dispose());
   }
 
   async init(): Promise<void> {

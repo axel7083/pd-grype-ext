@@ -34,13 +34,7 @@ import type {
 import { expect, test, vi, beforeEach } from 'vitest';
 import { MainService } from './main-service';
 import { WebviewService } from './webview-service';
-import {
-  RpcExtension,
-  RoutingApi,
-  DialogApi,
-  ImageApi,
-  ProviderApi,
-} from '@podman-desktop/extension-grype-core-api';
+import { RpcExtension, RoutingApi, DialogApi, ImageApi, ProviderApi } from '@podman-desktop/extension-grype-core-api';
 import { RoutingApiImpl } from '../apis/routing-api-impl';
 import { DialogApiImpl } from '../apis/dialog-api-impl';
 import { ImageApiImpl } from '../apis/image-api-impl';
