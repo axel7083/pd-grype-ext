@@ -34,11 +34,19 @@ import type {
 import { expect, test, vi, beforeEach } from 'vitest';
 import { MainService } from './main-service';
 import { WebviewService } from './webview-service';
-import { RpcExtension, RoutingApi, DialogApi, ImageApi, ProviderApi } from '@podman-desktop/extension-grype-core-api';
+import {
+  RpcExtension,
+  RoutingApi,
+  DialogApi,
+  ImageApi,
+  ProviderApi,
+  SyftApi,
+} from '@podman-desktop/extension-grype-core-api';
 import { RoutingApiImpl } from '../apis/routing-api-impl';
 import { DialogApiImpl } from '../apis/dialog-api-impl';
 import { ImageApiImpl } from '../apis/image-api-impl';
 import { ProviderApiImpl } from '../apis/provider-api-impl';
+import { SyftApiImpl } from '../apis/syft-api-impl';
 
 // mock message-proxy
 vi.mock(import('@podman-desktop/extension-grype-core-api'));
@@ -48,8 +56,16 @@ vi.mock(import('./routing-service'));
 vi.mock(import('./dialog-service'));
 vi.mock(import('./image-service'));
 vi.mock(import('./provider-service'));
+vi.mock(import('./podman-service'));
+vi.mock(import('./syft-service'));
+vi.mock(import('./command-service'));
 
-const EXTENSION_CONTEXT_MOCK: ExtensionContext = {} as unknown as ExtensionContext;
+// mock GitHub client
+vi.mock(import('@octokit/rest'));
+
+const EXTENSION_CONTEXT_MOCK: ExtensionContext = {
+  storagePath: '',
+} as unknown as ExtensionContext;
 const WINDOW_API_MOCK: typeof window = {} as unknown as typeof window;
 const ENV_API_MOCK: typeof env = {
   createTelemetryLogger: vi.fn(),
@@ -99,6 +115,7 @@ test('ensure init register all APIs', async () => {
     [DialogApi, DialogApiImpl],
     [ImageApi, ImageApiImpl],
     [ProviderApi, ProviderApiImpl],
+    [SyftApi, SyftApiImpl],
   ]);
 
   for (const [key, value] of APIS.entries()) {
