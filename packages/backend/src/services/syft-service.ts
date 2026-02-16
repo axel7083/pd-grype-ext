@@ -172,7 +172,7 @@ export class SyftService implements Disposable, AsyncInit {
 
     let selected: SyftGithubReleaseArtifactMetadata | undefined = undefined;
     this.#cliTool?.registerInstaller({
-      doUninstall(logger: Logger): Promise<void> {
+      doUninstall(_: Logger): Promise<void> {
         throw new Error('Not implemented');
       },
       doInstall: async (logger: Logger) => {
@@ -194,7 +194,7 @@ export class SyftService implements Disposable, AsyncInit {
           await rm(assetPath);
         }
       },
-      selectVersion: async (latest?: boolean) => {
+      selectVersion: async (_?: boolean) => {
         selected = await this.promptUserForVersion();
         return selected.tag.slice(1); // remove `v` prefix
       },
