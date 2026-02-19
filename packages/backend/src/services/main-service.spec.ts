@@ -29,6 +29,7 @@ import type {
   Webview,
   WebviewPanel,
   navigation as navigationApi,
+  imageChecker,
 } from '@podman-desktop/api';
 
 import { expect, test, vi, beforeEach } from 'vitest';
@@ -78,6 +79,7 @@ const COMMANDS_API_MOCK: typeof commandsApi = {} as unknown as typeof commandsAp
 const CONTAINER_API_MOCK: typeof containerEngine = {} as unknown as typeof containerEngine;
 const CONFIGURATION_API_MOCK: typeof configurationApi = {} as unknown as typeof configurationApi;
 const NAVIGATION_API_MOCK: typeof navigationApi = {} as unknown as typeof navigationApi;
+const IMAGE_CHECKER_MOCK: typeof imageChecker = {} as unknown as typeof imageChecker;
 
 const WEBVIEW_PANEL: WebviewPanel = {
   webview: {
@@ -103,6 +105,7 @@ function getMainService(): MainService {
     containers: CONTAINER_API_MOCK,
     configuration: CONFIGURATION_API_MOCK,
     navigationApi: NAVIGATION_API_MOCK,
+    imageChecker: IMAGE_CHECKER_MOCK,
   });
 }
 

@@ -29,6 +29,7 @@ import type {
   navigation as navigationApi,
   containerEngine,
   TelemetryLogger,
+  imageChecker,
 } from '@podman-desktop/api';
 import { WebviewService } from './webview-service';
 import {
@@ -56,6 +57,7 @@ import { CommandService } from './command-service';
 import { ContainerService } from './containers-service';
 import { SyftApiImpl } from '../apis/syft-api-impl';
 import { PodmanService } from './podman-service';
+import { ImageCheckerProvider } from './image-checker-provider';
 
 interface Dependencies {
   extensionContext: ExtensionContext;
@@ -69,6 +71,7 @@ interface Dependencies {
   navigationApi: typeof navigationApi;
   containers: typeof containerEngine;
   configuration: typeof configurationAPI;
+  imageChecker: typeof imageChecker;
 }
 
 export class MainService implements Disposable, AsyncInit {
@@ -168,6 +171,15 @@ export class MainService implements Disposable, AsyncInit {
     });
     await commands.init();
     this.#disposables.push(commands);
+
+    // image checker
+    const imageChecker = new ImageCheckerProvider({
+      imageChecker: this.dependencies.imageChecker,
+      syft: syft,
+      containers: containers,
+    });
+    await imageChecker.init();
+    this.#disposables.push(imageChecker);
 
     /**
      * Creating the api for the frontend IPCs

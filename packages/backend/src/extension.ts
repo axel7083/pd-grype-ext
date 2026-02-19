@@ -27,6 +27,7 @@ import {
   commands as commandsApi,
   configuration as configurationApi,
   navigation as navigationApi,
+  imageChecker as imageCheckerApi,
 } from '@podman-desktop/api';
 import { MainService } from './services/main-service';
 
@@ -46,6 +47,7 @@ export async function activate(extensionContext: ExtensionContext): Promise<void
     containers: containerEngine,
     configuration: configurationApi,
     navigationApi: navigationApi,
+    imageChecker: imageCheckerApi,
   });
   return main.init();
 }
