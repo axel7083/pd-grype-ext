@@ -52,6 +52,7 @@ import { ImageApiImpl } from '../apis/image-api-impl';
 import { ProviderService } from './provider-service';
 import { ProviderApiImpl } from '../apis/provider-api-impl';
 import { SyftService } from './syft-service';
+import { GrypeService } from './grype-service';
 import { Octokit } from '@octokit/rest';
 import { CommandService } from './command-service';
 import { ContainerService } from './containers-service';
@@ -155,6 +156,18 @@ export class MainService implements Disposable, AsyncInit {
     await syft.init();
     this.#disposables.push(syft);
 
+    // grype service (register CLI tool)
+    const grype = new GrypeService({
+      cliApi: this.dependencies.cliApi,
+      octokit: new Octokit(),
+      window: this.dependencies.window,
+      envApi: this.dependencies.env,
+      storagePath: this.dependencies.extensionContext.storagePath,
+      process: this.dependencies.processApi,
+    });
+    await grype.init();
+    this.#disposables.push(grype);
+
     // containers
     const containers = new ContainerService({
       containers: this.dependencies.containers,
@@ -175,8 +188,9 @@ export class MainService implements Disposable, AsyncInit {
     // image checker
     const imageChecker = new ImageCheckerProvider({
       imageChecker: this.dependencies.imageChecker,
-      syft: syft,
+      syft,
       containers: containers,
+      grype,
     });
     await imageChecker.init();
     this.#disposables.push(imageChecker);

@@ -20,6 +20,7 @@ import type { Document } from '@podman-desktop/extension-grype-core-api/json-sch
 import { SyftApi } from '@podman-desktop/extension-grype-core-api';
 import type { SyftService } from '../services/syft-service';
 import type { ProviderService } from '../services/provider-service';
+import { readFile } from 'node:fs/promises';
 
 interface Dependencies {
   syft: SyftService;
@@ -38,10 +39,12 @@ export class SyftApiImpl extends SyftApi {
     const connection = this.dependencies.provider.getProviderContainerConnection(options.connection);
 
     try {
-      return await this.dependencies.syft.analyse({
+      const file = await this.dependencies.syft.analyse({
         connection: connection,
         imageId: options.imageId,
       });
+      const result = await readFile(file, 'utf8');
+      return JSON.parse(result);
     } catch (err: unknown) {
       console.error(err);
       throw err;

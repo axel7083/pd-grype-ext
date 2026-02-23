@@ -15,6 +15,7 @@ COPY --from=builder /app/packages/backend/package.json /extension/
 COPY --from=builder /app/packages/backend/media/ /extension/media
 COPY --from=builder /app/LICENSE /extension/
 COPY --from=builder /app/packages/backend/icon.png /extension/
+COPY --from=builder /app/packages/backend/syft.png /extension/
 COPY --from=builder /app/README.md /extension/
 
 LABEL org.opencontainers.image.title="Grype Extension" \

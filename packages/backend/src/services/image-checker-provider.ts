@@ -15,15 +15,17 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
-import type { imageChecker, Disposable, ImageInfo, CancellationToken, ProviderResult, ImageChecks } from '@podman-desktop/api';
+import type { imageChecker, Disposable, ImageInfo, CancellationToken, ImageChecks, ImageCheck } from '@podman-desktop/api';
 import type { AsyncInit } from '../utils/async-init';
 import type { SyftService } from './syft-service';
 import type { ContainerService } from './containers-service';
+import type { GrypeService } from './grype-service';
 
 interface Dependencies {
   imageChecker: typeof imageChecker;
   syft: SyftService;
   containers: ContainerService;
+  grype: GrypeService;
 }
 
 export class ImageCheckerProvider implements Disposable, AsyncInit {
@@ -35,22 +37,37 @@ export class ImageCheckerProvider implements Disposable, AsyncInit {
     this.#disposables.forEach(disposable => disposable.dispose());
     this.#disposables = [];
   }
-  protected async check(image: ImageInfo, token?: CancellationToken): ProviderResult<ImageChecks> {
-    const connection = await this.dependencies.containers.getRunningProviderContainerConnectionByEngineId(image.engineId);
+  protected async check(image: ImageInfo, _token?: CancellationToken): Promise<ImageChecks | undefined> {
+    const connection = await this.dependencies.containers.getRunningProviderContainerConnectionByEngineId(
+      image.engineId,
+    );
 
-    const result = await this.dependencies.syft.analyse({
+    const file = await this.dependencies.syft.analyse({
       connection,
       imageId: image.Id,
     });
 
+    const result = await this.dependencies.grype.analyse({ sbom: file });
+
+    const vulnerabilities: Array<ImageCheck> = result.matches.map(match => ({
+      name: match.vulnerability.id,
+      status: 'failed',
+      severity: match.vulnerability.severity,
+      markdownDescription: match.vulnerability.description,
+    }));
+
     return {
-      checks: result.artifacts.map((artifact) => ({
-        name: artifact.name,
-        status: 'success',
-        markdownDescription: artifact.version,
-      })),
+      checks:
+        vulnerabilities.length > 0
+          ? vulnerabilities
+          : [
+              {
+                status: 'success',
+                name: 'No vulnerabilities found',
+              },
+            ],
     };
-  };
+  }
 
   async init(): Promise<void> {
     this.#disposables.push(

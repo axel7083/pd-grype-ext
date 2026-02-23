@@ -15,63 +15,33 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
-import type {
-  cli as cliApi,
-  CliTool,
-  Disposable,
-  env as envApi,
-  Logger,
-  process as processApi,
-  ProviderContainerConnection,
-  QuickPickItem,
-  window as windowApi,
-} from '@podman-desktop/api';
+import type { Disposable, ProviderContainerConnection } from '@podman-desktop/api';
 import { ProgressLocation } from '@podman-desktop/api';
-import type { AsyncInit } from '../utils/async-init';
-import type { Octokit } from '@octokit/rest';
-import { arch, platform } from 'node:process';
 import { dirname, join } from 'node:path';
-import AdmZip from 'adm-zip';
-import * as tar from 'tar';
-import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import type { Document } from '@podman-desktop/extension-grype-core-api/json-schema/syft';
+import { mkdir, rename } from 'node:fs/promises';
 import type { PodmanService } from './podman-service';
+import { AnchoreCliService, type BaseCliDependencies } from './anchore-cli-service';
 
-interface Dependencies {
-  cliApi: typeof cliApi;
-  octokit: Octokit;
-  storagePath: string;
-  envApi: typeof envApi;
-  window: typeof windowApi;
-  process: typeof processApi;
+interface Dependencies extends BaseCliDependencies {
   podman: PodmanService;
 }
 
-export interface SyftGithubReleaseArtifactMetadata extends QuickPickItem {
-  tag: string;
-  id: number;
-}
-
-export const ANCHOR_GITHUB_ORG = 'anchore';
-export const GRYPE_GITHUB_REPOSITORY = 'syft';
-
-export class SyftService implements Disposable, AsyncInit {
-  #cliTool?: CliTool;
-  #internalPath: string;
-
-  constructor(protected dependencies: Dependencies) {
-    this.#internalPath = join(this.dependencies.storagePath, this.dependencies.envApi.isWindows ? 'syft.exe' : 'syft');
+export class SyftService extends AnchoreCliService<Dependencies> implements Disposable {
+  protected override get icon(): string {
+    return 'syft.png';
   }
-
-  dispose(): void {
-    this.#cliTool?.dispose();
+  protected get toolId(): string {
+    return 'syft';
   }
-
-  protected async getSyftVersion(path: string): Promise<string> {
-    // output example 'syft 1.41.2'
-    const { stdout } = await this.dependencies.process.exec(path, ['--version']);
-    return stdout.trim().split(' ')[1];
+  protected get displayName(): string {
+    return 'Syft';
+  }
+  protected get markdownDescription(): string {
+    return 'Syft is a powerful open-source tool for generating Software Bills of Materials (SBOMs).';
+  }
+  protected get repoName(): string {
+    return 'syft';
   }
 
   protected sanitizeImageId(imageId: string): string {
@@ -81,11 +51,11 @@ export class SyftService implements Disposable, AsyncInit {
     return imageId;
   }
 
-  public async analyse(options: { connection: ProviderContainerConnection; imageId: string }): Promise<Document> {
-    if (!this.#cliTool?.version || !this.#cliTool.path)
+  public async analyse(options: { connection: ProviderContainerConnection; imageId: string }): Promise<string> {
+    if (!this.cliTool?.version || !this.cliTool.path)
       throw new Error('cannot analyse image without syft binary installed');
 
-    const binary = this.#cliTool.path;
+    const binary = this.cliTool.path;
 
     if (options.connection.connection.type !== 'podman') {
       throw new Error('extension only supported podman connection');
@@ -102,8 +72,7 @@ export class SyftService implements Disposable, AsyncInit {
 
     // shortcut everything if we have already done the scanning
     if (existsSync(destination)) {
-      const content = await readFile(destination, 'utf8');
-      return JSON.parse(content) as Document;
+      return destination;
     }
 
     return await this.dependencies.window.withProgress(
@@ -135,204 +104,13 @@ export class SyftService implements Disposable, AsyncInit {
 
         const tmp = `${destination}.tmp`;
 
-        console.log('env', env);
-        console.log('imageId', imageId);
         await this.dependencies.process.exec(binary, ['--from=podman', options.imageId, `--output=json=${tmp}`], {
           env,
         });
         await rename(tmp, destination);
 
-        const content = await readFile(destination, 'utf8');
-        return JSON.parse(content) as Document;
+        return destination;
       },
     );
-  }
-
-  async init(): Promise<void> {
-    let version: string | undefined;
-
-    if (existsSync(this.#internalPath)) {
-      version = await this.getSyftVersion(this.#internalPath);
-    }
-
-    // Register the Syft CLI tool. For now, only registration is performed without installers or updates.
-    this.#cliTool = this.dependencies.cliApi.createCliTool({
-      name: 'syft',
-      displayName: 'Syft',
-      markdownDescription: 'Syft is a powerful open-source tool for generating Software Bills of Materials (SBOMs).',
-      images: {
-        // Use the extension icon by default. Podman Desktop will resolve it relative to the extension.
-        icon: 'icon.png',
-        logo: 'icon.png',
-      },
-      version,
-      installationSource: 'extension',
-      path: version ? this.#internalPath : undefined,
-    });
-
-    let selected: SyftGithubReleaseArtifactMetadata | undefined = undefined;
-    this.#cliTool?.registerInstaller({
-      doUninstall(_: Logger): Promise<void> {
-        throw new Error('Not implemented');
-      },
-      doInstall: async (logger: Logger) => {
-        if (!selected) throw new Error('No version selected');
-
-        const assetPath = await this.download(selected);
-        logger.log(`Downloaded syft to ${assetPath}`);
-
-        try {
-          const binPath = await this.extract(assetPath, this.dependencies.storagePath);
-          logger.log(`Extracted syft to ${binPath}`);
-
-          this.#cliTool?.updateVersion({
-            version: selected.tag.slice(1),
-            path: binPath,
-            installationSource: 'extension',
-          });
-        } finally {
-          await rm(assetPath);
-        }
-      },
-      selectVersion: async (_?: boolean) => {
-        selected = await this.promptUserForVersion();
-        return selected.tag.slice(1); // remove `v` prefix
-      },
-    });
-  }
-
-  protected async download(release: SyftGithubReleaseArtifactMetadata): Promise<string> {
-    const { data } = await this.dependencies.octokit.repos.listReleaseAssets({
-      owner: ANCHOR_GITHUB_ORG,
-      repo: GRYPE_GITHUB_REPOSITORY,
-      release_id: release.id,
-    });
-
-    const assetName = this.getAssetName(release.tag.slice(1));
-
-    const asset = data.find(asset => assetName === asset.name);
-    if (!asset) throw new Error(`asset ${assetName} not found`);
-
-    const response = await this.dependencies.octokit.repos.getReleaseAsset({
-      owner: ANCHOR_GITHUB_ORG,
-      repo: GRYPE_GITHUB_REPOSITORY,
-      asset_id: asset.id,
-      headers: {
-        accept: 'application/octet-stream',
-      },
-    });
-
-    await mkdir(this.dependencies.storagePath, { recursive: true });
-
-    // write the file
-    const destination = join(this.dependencies.storagePath, asset.name);
-    await writeFile(destination, Buffer.from(response.data as unknown as ArrayBuffer));
-
-    return destination;
-  }
-
-  protected async extract(archivePath: string, destDir: string): Promise<string> {
-    if (archivePath.endsWith('.zip')) {
-      const zip = new AdmZip(archivePath);
-      // eslint-disable-next-line sonarjs/no-unsafe-unzip
-      zip.extractAllTo(destDir, true);
-    } else if (archivePath.endsWith('.tar.gz')) {
-      // eslint-disable-next-line sonarjs/no-unsafe-unzip
-      await tar.x({ file: archivePath, cwd: destDir });
-    } else {
-      throw new Error(`Unsupported archive format: ${archivePath}`);
-    }
-
-    const binaryName = platform === 'win32' ? 'syft.exe' : 'syft';
-    const binaryPath = join(destDir, binaryName);
-
-    if (platform !== 'win32') {
-      // eslint-disable-next-line sonarjs/file-permissions
-      await chmod(binaryPath, 0o755);
-    }
-
-    return binaryPath;
-  }
-
-  protected getAssetName(version: string): string {
-    let os: string;
-    let extension = 'tar.gz';
-
-    switch (platform) {
-      case 'win32':
-        os = 'windows';
-        extension = 'zip';
-        break;
-      case 'darwin':
-        os = 'darwin';
-        break;
-      case 'linux':
-      default:
-        os = 'linux';
-        break;
-    }
-
-    let architecture: string;
-    switch (arch) {
-      case 'x64':
-        architecture = 'amd64';
-        break;
-      case 'arm64':
-        architecture = 'arm64';
-        break;
-      case 'ppc64':
-        architecture = 'ppc64le';
-        break;
-      case 's390x':
-        architecture = 's390x';
-        break;
-      default:
-        architecture = arch;
-        break;
-    }
-
-    return `syft_${version}_${os}_${architecture}.${extension}`;
-  }
-
-  protected async promptUserForVersion(currentTagVersion?: string): Promise<SyftGithubReleaseArtifactMetadata> {
-    // Get the latest releases
-    let lastReleasesMetadata = await this.listReleases();
-    // if the user already has an installed version, we remove it from the list
-    if (currentTagVersion) {
-      lastReleasesMetadata = lastReleasesMetadata.filter(release => release.tag.slice(1) !== currentTagVersion);
-    }
-
-    // Show the quickpick
-    const selectedRelease = await this.dependencies.window.showQuickPick(lastReleasesMetadata, {
-      placeHolder: 'Select Syft version to download',
-    });
-
-    if (selectedRelease) {
-      return selectedRelease;
-    } else {
-      throw new Error('No version selected');
-    }
-  }
-
-  protected async listReleases(limits = 10): Promise<SyftGithubReleaseArtifactMetadata[]> {
-    const lastReleases = await this.dependencies.octokit.repos.listReleases({
-      owner: ANCHOR_GITHUB_ORG,
-      repo: GRYPE_GITHUB_REPOSITORY,
-    });
-
-    // keep only releases and not pre-releases
-    lastReleases.data = lastReleases.data.filter(release => !release.prerelease);
-
-    if (lastReleases.data.length > limits) {
-      lastReleases.data = lastReleases.data.slice(0, limits);
-    }
-
-    return lastReleases.data.map(release => {
-      return {
-        label: release.name ?? release.tag_name,
-        tag: release.tag_name,
-        id: release.id,
-      };
-    });
   }
 }

@@ -59,7 +59,9 @@ vi.mock(import('./image-service'));
 vi.mock(import('./provider-service'));
 vi.mock(import('./podman-service'));
 vi.mock(import('./syft-service'));
+vi.mock(import('./grype-service'));
 vi.mock(import('./command-service'));
+vi.mock(import('./image-checker-provider'));
 
 // mock GitHub client
 vi.mock(import('@octokit/rest'));
