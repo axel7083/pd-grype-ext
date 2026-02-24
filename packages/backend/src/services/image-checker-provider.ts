@@ -15,7 +15,14 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ***********************************************************************/
-import type { imageChecker, Disposable, ImageInfo, CancellationToken, ImageChecks, ImageCheck } from '@podman-desktop/api';
+import type {
+  imageChecker,
+  Disposable,
+  ImageInfo,
+  CancellationToken,
+  ImageChecks,
+  ImageCheck,
+} from '@podman-desktop/api';
 import type { AsyncInit } from '../utils/async-init';
 import type { SyftService } from './syft-service';
 import type { ContainerService } from './containers-service';
