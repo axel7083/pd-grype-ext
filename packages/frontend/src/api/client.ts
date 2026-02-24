@@ -24,6 +24,8 @@ import {
   SyftApi,
 } from '@podman-desktop/extension-grype-core-api';
 
+import { browser } from '$app/environment';
+
 /**
  * This file is the client side of the API. It is used to communicate with the backend, which allows
  * cross-communication between the frontend and backend through an RPC-like communication.
@@ -32,20 +34,55 @@ import {
 export interface RouterState {
   url: string;
 }
-const podmanDesktopApi = acquirePodmanDesktopApi();
 
-export const rpcBrowser: RpcBrowser = new RpcBrowser(window, podmanDesktopApi);
-// apis
-export const routingAPI: RoutingApi = rpcBrowser.getProxy(RoutingApi);
-export const providerAPI: ProviderApi = rpcBrowser.getProxy(ProviderApi);
-export const imageAPI: ImageApi = rpcBrowser.getProxy(ImageApi);
-export const dialogAPI: DialogApi = rpcBrowser.getProxy(DialogApi);
-export const syftAPI: SyftApi = rpcBrowser.getProxy(SyftApi);
+let rpcBrowser: RpcBrowser;
+let routingAPI: RoutingApi;
+let providerAPI: ProviderApi;
+let imageAPI: ImageApi;
+let dialogAPI: DialogApi;
+let syftAPI: SyftApi;
+
+if (browser) {
+  const podmanDesktopApi = acquirePodmanDesktopApi();
+
+  rpcBrowser = new RpcBrowser(window, podmanDesktopApi);
+  // apis
+  routingAPI = rpcBrowser.getProxy(RoutingApi);
+  providerAPI = rpcBrowser.getProxy(ProviderApi);
+  imageAPI = rpcBrowser.getProxy(ImageApi);
+  dialogAPI = rpcBrowser.getProxy(DialogApi);
+  syftAPI = rpcBrowser.getProxy(SyftApi);
+
+  /**
+   * Making clients available as global properties
+   */
+  Object.defineProperty(window, 'routingAPI', {
+    value: routingAPI,
+  });
+
+  Object.defineProperty(window, 'dialogAPI', {
+    value: dialogAPI,
+  });
+
+  Object.defineProperty(window, 'imageAPI', {
+    value: imageAPI,
+  });
+
+  Object.defineProperty(window, 'providerAPI', {
+    value: providerAPI,
+  });
+
+  Object.defineProperty(window, 'syftAPI', {
+    value: syftAPI,
+  });
+}
+
+export { rpcBrowser, routingAPI, providerAPI, imageAPI, dialogAPI, syftAPI };
 
 // The below code is used to save the state of the router in the podmanDesktopApi, so
 // that we can determine the correct route to display when the extension is reloaded.
 export const saveRouterState = (state: RouterState): void => {
-  podmanDesktopApi.setState(state);
+  acquirePodmanDesktopApi().setState(state);
 };
 
 const isRouterState = (value: unknown): value is RouterState => {
@@ -60,26 +97,7 @@ export async function getRouterState(): Promise<RouterState> {
     };
   }
 
-  const state = podmanDesktopApi.getState();
+  const state = acquirePodmanDesktopApi().getState();
   if (isRouterState(state)) return state;
   return { url: '/' };
 }
-
-/**
- * Making clients available as global properties
- */
-Object.defineProperty(window, 'routingAPI', {
-  value: routingAPI,
-});
-
-Object.defineProperty(window, 'dialogAPI', {
-  value: dialogAPI,
-});
-
-Object.defineProperty(window, 'imageAPI', {
-  value: imageAPI,
-});
-
-Object.defineProperty(window, 'providerAPI', {
-  value: providerAPI,
-});
